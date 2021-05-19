@@ -47,6 +47,7 @@ align(log_level="INFO", wavdir=dir_wav, txtdir=dir_txt, output=output, ngpu=ngpu
 import argparse
 import logging
 import sys
+import time
 from typing import Union
 import torch
 
@@ -84,9 +85,9 @@ except:
 
 LONGEST_AUDIO_SEGMENTS = 320
 # NUMBER_OF_PROCESSES determines how many CTC segmentation workers
-# are started. Set this higer or lower, depending how fast your
+# are started. Set this higher or lower, depending how fast your
 # network can do the inference
-NUMBER_OF_PROCESSES = 6
+NUMBER_OF_PROCESSES = 8
 
 
 def align_worker(in_queue, out_queue, num=0):
@@ -322,6 +323,8 @@ def align(
             # IndexError:ground: truth is empty (thrown at preparation)
             logging.error(f"LPZ failed for file {stem}; error in espnet: {e}")
     logging.info("Shutting down workers.")
+    # wait for workers to finish
+    time.sleep(5)
     # Tell child processes to stop
     for i in range(NUMBER_OF_PROCESSES):
         task_queue.put("STOP")
