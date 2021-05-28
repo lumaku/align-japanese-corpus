@@ -38,7 +38,7 @@ model = {
 asr_model_name = "Shinji Watanabe/laborotv_asr_train_asr_conformer2_latest33_raw_char_sp_valid.acc.ave"
 d = ModelDownloader(cachedir="./modelcache")
 model = d.download_and_unpack(asr_model_name)
-FRAMES_PER_INDEX=768
+# note: this model has FRAMES_PER_INDEX=768
 
 align(log_level="INFO", wavdir=dir_wav, txtdir=dir_txt, output=output, ngpu=ngpu, gratis_blank=True, **model)
 
@@ -86,8 +86,8 @@ except:
 LONGEST_AUDIO_SEGMENTS = 320
 # NUMBER_OF_PROCESSES determines how many CTC segmentation workers
 # are started. Set this higher or lower, depending how fast your
-# network can do the inference
-NUMBER_OF_PROCESSES = 8
+# network can do the inference and how much RAM you have
+NUMBER_OF_PROCESSES = 4
 
 
 def align_worker(in_queue, out_queue, num=0):
@@ -202,6 +202,7 @@ def align(
     output: Path,
     asr_train_config: Union[Path, str],
     asr_model_file: Union[Path, str] = None,
+    fixed_time_stamps=True,
     **kwargs,
 ):
     """Provide the scripting interface to score text to audio."""
@@ -231,6 +232,19 @@ def align(
         f" {aligner.config.blank_transition_cost_zero}."
     )
 
+    # fixed ratio for timing stamps
+    if fixed_time_stamps:
+        aligner.set(
+            time_stamps="fixed",
+            samples_to_frames_ratio=aligner.estimate_samples_to_frames_ratio(),
+        )
+    # estimated index to frames ratio, usually 512, but sometimes 768
+    # - depends on architecture
+    logging.info(
+        f"Timing ratio (sample points per CTC index) set to"
+        f" {aligner.samples_to_frames_ratio}."
+    )
+
     ## application-specific settings
     # japanese text cleaning
     aligner.preprocess_fn.text_cleaner.cleaner_types += ["jaconv"]
@@ -249,7 +263,10 @@ def align(
                 if txt is not None:
                     raise ValueError(f"Duplicate found: {stem}")
                 txt = item
-        files_dict[stem] = (wav, txt)
+        if txt is None:
+            logging.error(f"No text found for {stem}.wav")
+        else:
+            files_dict[stem] = (wav, txt)
     num_files = len(files_dict)
     logging.info(f"Found {num_files} files.")
 
@@ -263,10 +280,6 @@ def align(
     ).start()
     for i in range(NUMBER_OF_PROCESSES):
         Process(target=align_worker, args=(task_queue, done_queue, i)).start()
-
-    # estimate index to frames ratio, usually 512, but sometimes 768 ?????
-    samples_to_frames_ratio = aligner.estimate_samples_to_frames_ratio()
-    logging.info(f"Estimated samples_to_frames_ratio: {samples_to_frames_ratio}")
 
     # Align
     count_files = 0
@@ -295,9 +308,10 @@ def align(
         partitions = get_partitions(
             speech_len,
             max_len_s=LONGEST_AUDIO_SEGMENTS,
-            frontend_frame_size=samples_to_frames_ratio,
+            frontend_frame_size=aligner.samples_to_frames_ratio,
         )
         duration = speech_len / sample_rate
+        expected_lpz_length = speech_len // aligner.samples_to_frames_ratio
 
         logging.info(
             f"Inference on file {stem} {count_files}/{num_files}: {len(utterance_list)}"
@@ -310,6 +324,11 @@ def align(
                 for start, end in partitions
             ]
             lpz = torch.cat(lpzs).numpy()
+            if not lpz.shape[0] == expected_lpz_length:
+                logging.error(
+                    f"LPZ size mismatch on {stem}: "
+                    f"{lpz.shape[0]}-{expected_lpz_length}"
+                )
             task = aligner.prepare_segmentation_task(
                 text, lpz, name=stem, speech_len=speech_len
             )
@@ -321,6 +340,7 @@ def align(
             # RuntimeError: unknown CUDA value error (at inference)
             # TooShortUttError: Audio too short (at inference)
             # IndexError:ground: truth is empty (thrown at preparation)
+            # Assertion Error for audio-lpz length mismatch
             logging.error(f"LPZ failed for file {stem}; error in espnet: {e}")
     logging.info("Shutting down workers.")
     # wait for workers to finish
