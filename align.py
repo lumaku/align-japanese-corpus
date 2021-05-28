@@ -202,7 +202,7 @@ def align(
     output: Path,
     asr_train_config: Union[Path, str],
     asr_model_file: Union[Path, str] = None,
-    fixed_time_stamps=True,
+    fixed_time_stamps=False,
     **kwargs,
 ):
     """Provide the scripting interface to score text to audio."""
@@ -242,7 +242,7 @@ def align(
     # - depends on architecture
     logging.info(
         f"Timing ratio (sample points per CTC index) set to"
-        f" {aligner.samples_to_frames_ratio}."
+        f" {aligner.samples_to_frames_ratio} ({aligner.time_stamps})."
     )
 
     ## application-specific settings
