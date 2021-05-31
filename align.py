@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2021, Ludwig Kürzinger
+# Copyright 2021, Ludwig Kürzinger, Takaaki Saeki
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 """Perform CTC Re-Segmentation on japanese dataset.
 Either start this program as a script or from the interactive python REPL.
