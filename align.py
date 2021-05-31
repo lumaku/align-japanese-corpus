@@ -1,5 +1,5 @@
-
 #!/usr/bin/env python3
+
 # Copyright 2021, Ludwig Kürzinger
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 """Perform CTC Re-Segmentation on japanese dataset.
@@ -220,12 +220,14 @@ def align(
 
     # fixed ratio for timing stamps
     if fixed_time_stamps:
-        aligner.set(
+        aligner.set_config(
             time_stamps="fixed",
-            samples_to_frames_ratio=aligner.estimate_samples_to_frames_ratio(),
         )
     # estimated index to frames ratio, usually 512, but sometimes 768
     # - depends on architecture
+    aligner.set_config(
+        samples_to_frames_ratio=aligner.estimate_samples_to_frames_ratio(),
+    )
     logging.info(
         f"Timing ratio (sample points per CTC index) set to"
         f" {aligner.samples_to_frames_ratio} ({aligner.time_stamps})."
@@ -325,7 +327,7 @@ def align(
         except Exception as e:
             # RuntimeError: unknown CUDA value error (at inference)
             # TooShortUttError: Audio too short (at inference)
-            # IndexError:ground: truth is empty (thrown at preparation)
+            # IndexError: ground truth is empty (thrown at preparation)
             # Assertion Error for audio-lpz length mismatch
             logging.error(f"LPZ failed for file {stem}; error in espnet: {e}")
     logging.info("Shutting down workers.")
