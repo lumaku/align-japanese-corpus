@@ -1,47 +1,38 @@
+
 #!/usr/bin/env python3
 # Copyright 2021, Ludwig Kürzinger
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 """Perform CTC Re-Segmentation on japanese dataset.
-
 Either start this program as a script or from the interactive python REPL.
 Example:
-
 ngpu = 0     # recommended for long audio files
 ## or:
 LONGEST_AUDIO_SEGMENTS = 75
 ngpu = 1
-
 dataset_path = Path("/zzz/20210304/")
 dir_wav =  dataset_path / "watanabe-sensei_pilot-data" / "wav16k"
 dir_txt =  dataset_path / "watanabe-sensei_pilot-data" / "txt"
 output = dataset_path
-
 ## Choose a Model
-
 # Japanese RNN by Shinji
 model_path = dataset_path / "exp/asr_train_asr_rnn_raw_jp_char_sp"
 asr_model_file = model_path / "7epoch.pth"
 asr_train_config = model_path / "config.yaml"
-
 # English Librispeech Sinc-RNN by Ludwig
 (to test inference speed); commit 473128be9f9c358b3564a2aaff8b7056b790cd12
 model_path = dataset_path / "exp/asr_train_asr_sinc_rnn_raw_bpe5000_sp"
 asr_model_file = model_path / "9epoch.pth"
 asr_train_config = model_path / "config.yaml"
-
 model = {
     "asr_train_config": asr_train_config,
     "asr_model_file": asr_model_file,
 }
-
 # Japanese Transformer Model by Shinji
 asr_model_name = "Shinji Watanabe/laborotv_asr_train_asr_conformer2_latest33_raw_char_sp_valid.acc.ave"
 d = ModelDownloader(cachedir="./modelcache")
 model = d.download_and_unpack(asr_model_name)
 # note: this model has FRAMES_PER_INDEX=768
-
 align(log_level="INFO", wavdir=dir_wav, txtdir=dir_txt, output=output, ngpu=ngpu, gratis_blank=True, **model)
-
 """
 
 import argparse
@@ -132,9 +123,7 @@ def get_partitions(
     subsampling_factor=4,
 ):
     """Obtain partitions
-
     Note that this is implemented for frontends that discard trailing data.
-
     :param t: speech sample points
     :param max_len_s: partition max length in seconds
     :param fs: sample rate
@@ -168,12 +157,9 @@ def get_partitions(
 
 def text_processing(utt_txt):
     """Normalize text
-
     Use for Japanese text.
-
     Args:
         utt_txt: String of Japanese text.
-
     Returns:
         utt_txt: Normalized
     """

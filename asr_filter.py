@@ -2,21 +2,16 @@
 # Copyright 2021, Ludwig Kürzinger
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 """Evaluate ground truth sequences by alignment.
-
 Either start this program as a script or from the interactive python REPL.
 Example:
-
 ngpu = 1
 dataset_path = Path("/zzz/20210304/")
-
 dir_wav =  dataset_path / "watanabe-sensei_pilot-data" / "wav16k"
 dir_txt =  dataset_path / "watanabe-sensei_pilot-data" / "txt"
 output = dataset_path
 re_segmentation = True
 SKIP_LONG_FILES_S = 492.0
-
 utterance_scoring(log_level="INFO", wavdir=dir_wav, txtdir=dir_txt, output=output, ngpu=ngpu, re_segmentation=re_segmentation)
-
 """
 
 import argparse
@@ -259,9 +254,13 @@ def utterance_scoring(
                 if txt is not None:
                     raise ValueError(f"Duplicate found: {stem}")
                 txt = item
-        files_dict[stem] = (wav, txt)
+        if txt is None:
+            logging.error(f"No text found for {stem}.wav")
+        else:
+            files_dict[stem] = (wav, txt)
     num_files = len(files_dict)
-    logging.info(f"Found {num_files} Files.")
+    logging.info(f"Found {num_files} files.")
+
 
     # Start worker processes
     Process(
